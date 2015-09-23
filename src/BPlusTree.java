@@ -18,6 +18,19 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @return value
 	 */
 	public T search(K key) {
+		Node n = root;
+		while(!n.isLeafNode){
+			IndexNode<K, T> in = (IndexNode<K, T>) n;
+			for(Node tempNode: in.children){
+				
+			}
+//			for(K temp: in.keys){
+//				if(key.compareTo(temp) >= 0){
+//					in.
+//					break;
+//				}
+//			}
+		}
 		return null;
 	}
 
