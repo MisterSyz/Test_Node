@@ -169,11 +169,34 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 */
 	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex,
 			IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
-		if(leftIndex.keys.size() + rightIndex.keys.size() < 2 * D){
-			leftIndex.children.add(rightIndex.children.remove(0));
-			rightIndex.keys.remove(0);
+		
+		int indexInParent = -1;
+		
+		if(parent != null){
+			indexInParent = parent.children.indexOf(leftIndex);
 		}
 		
+		// Merge operation
+		if(leftIndex.keys.size() + rightIndex.keys.size() < 2 * D){
+			leftIndex.keys.add(parent.keys.get(indexInParent));
+			leftIndex.keys.addAll(rightIndex.keys);
+			leftIndex.children.addAll(rightIndex.children);
+			parent.children.remove(rightIndex);
+			return indexInParent;
+		}else{
+			// Redistribute
+			if(leftIndex.isUnderflowed()){
+				leftIndex.keys.add(parent.keys.get(indexInParent));
+				parent.keys.set(indexInParent, rightIndex.keys.remove(0));
+				leftIndex.children.add(rightIndex.children.remove(0));
+			}else{
+				rightIndex.keys.add(0, parent.keys.get(indexInParent));
+				Node<K, T> temp = leftIndex.children.remove(leftIndex.children.size() - 1);
+				rightIndex.children.add(temp);
+				parent.keys.set(parent.keys.size() - 1, leftIndex.keys.remove(leftIndex.keys.size() - 1));
+			}
+		}
+		 
 		return -1;
 	}
 
