@@ -1,4 +1,5 @@
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Map.Entry;
 
 /**
@@ -74,7 +75,53 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param key
 	 */
 	public void delete(K key) {
-
+		delete(null, root, key, -1);
+	}
+	
+	private void delete(IndexNode <K, T> parent, Node<K, T> current, K key, int indexInParent){
+		// LeafNode case
+		if(!current.isLeafNode){
+			IndexNode<K, T> indexNode = (IndexNode<K, T>) current;
+			// Choose subtree
+			for(int i = 0; i < indexNode.keys.size(); i++){
+				if(i == 0 && indexNode.keys.get(0).compareTo(key) >= 0){
+					delete(indexNode, indexNode.children.get(0), key, i);
+				}else if(i == indexNode.keys.size() - 1 && indexNode.keys.get(indexNode.keys.size() - 1).compareTo(key) <= 0){
+					delete(indexNode, indexNode.children.get(indexNode.children.size() - 1), key, i);
+				}else if(indexNode.keys.get(i).compareTo(key) <= 0 && indexNode.keys.get(i + 1).compareTo(key) >= 0){
+					delete(indexNode, indexNode.children.get(i + 1), key, i);
+				}
+			}
+			// Handle leafNode underflow case
+			if(indexNode.isUnderflowed()){
+				int splitPos;
+				if(indexInParent > 0){
+					splitPos = handleIndexNodeUnderflow((IndexNode<K, T>)parent.children.get(indexInParent - 1), indexNode, parent);
+				}else{
+					splitPos = handleIndexNodeUnderflow(indexNode, (IndexNode<K, T>)parent.children.get(indexInParent + 1), parent);
+				}
+				
+			}
+		}else{  // IndexNode case
+			LeafNode<K, T> leafNode = (LeafNode<K, T>) current;
+			// Locate position to delete leafNode
+			for(int i = 0; i < leafNode.keys.size(); i++){
+				if(leafNode.keys.get(i).compareTo(key) == 0){
+					leafNode.keys.remove(i);
+					leafNode.values.remove(i);
+					break;
+				}
+			}
+			// Handle leafNode underflow case;
+			if(leafNode.isUnderflowed()){
+				int splitPos;
+				if(indexInParent > 0){
+					splitPos = handleLeafNodeUnderflow(leafNode.previousLeaf, leafNode, parent);
+				}else{
+					splitPos = handleLeafNodeUnderflow(leafNode,leafNode.nextLeaf, parent);
+				}
+			}
+		}
 	}
 
 	/**
@@ -91,8 +138,21 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 */
 	public int handleLeafNodeUnderflow(LeafNode<K,T> left, LeafNode<K,T> right,
 			IndexNode<K,T> parent) {
+		// Merge if left node has enough space to merge, redistribute otherwise
+		if(left.keys.size() + right.keys.size() < 2 * D){
+			left.keys.addAll(right.keys);
+			left.values.addAll(right.values);
+			parent.children.remove(right);
+			return parent.children.indexOf(left);
+		}else{
+			if(left.isUnderflowed()){
+				left.insertSorted(right.keys.remove(0), right.values.remove(0));
+			}else{
+				right.insertSorted(left.keys.remove(left.keys.size() - 1), left.values.remove(left.values.size() - 1));
+				parent.keys.set(parent.children.indexOf(left), right.keys.get(0));
+			}
+		}
 		return -1;
-
 	}
 
 	/**
@@ -109,6 +169,11 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 */
 	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex,
 			IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
+		if(leftIndex.keys.size() + rightIndex.keys.size() < 2 * D){
+			leftIndex.children.add(rightIndex.children.remove(0));
+			rightIndex.keys.remove(0);
+		}
+		
 		return -1;
 	}
 
