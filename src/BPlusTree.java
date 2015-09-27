@@ -20,30 +20,30 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param key
 	 * @return value
 	 */
-        public T search(K key) {
-          return searchNode(root, key);
-        }
-        public T searchNode(Node<K,T> temp_root, K key) {
-          if (temp_root.isLeafNode) {
+    public T search(K key) {
+        return searchNode(root, key);
+    }
+    public T searchNode(Node<K,T> temp_root, K key) {
+        if (temp_root.isLeafNode) {
             int i = 0;
             LeafNode<K, T> ln = (LeafNode<K, T>) temp_root;
             for (i = 0; i < ln.keys.size(); i++ ) {
-              if (key.compareTo(ln.keys.get(i)) == 0) {
-                return ln.values.get(i);
-              }
+                if (key.compareTo(ln.keys.get(i)) == 0) {
+                    return ln.values.get(i);
+                }
             }
             return null;
-          } else {
+        } else {
             int i = 0;
             IndexNode<K, T> in = (IndexNode<K, T>)temp_root;
             for (i = 0; i < in.keys.size(); i++) {
-              if (key.compareTo(in.keys.get(i)) < 0) {
-                break;
-              }
+                if (key.compareTo(in.keys.get(i)) < 0) {
+                    break;
+                }
             }
             return searchNode(in.children.get(i),key);
-          }
         }
+    }
 
 
 	/**
@@ -52,67 +52,72 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param key
 	 * @param value
 	 */
-        public void insert(K key, T value) {
-          if (root == null) {
+    public void insert(K key, T value) {
+        if (root == null) {
             LeafNode<K,T> ln = new LeafNode<K,T>(key, value);
             root = ln;
             return;
-          }
-          Node<K,T> temp_node = root;
-          ArrayList<IndexNode<K,T>> parents_node = new ArrayList<IndexNode<K,T>>();
-          while(!temp_node.isLeafNode) {
+        }
+        Node<K,T> temp_node = root;
+        ArrayList<IndexNode<K,T>> parents_node = new ArrayList<IndexNode<K,T>>();
+        while(!temp_node.isLeafNode) {
             parents_node.add((IndexNode<K,T>)temp_node);
             IndexNode<K,T> in = (IndexNode<K,T>) temp_node;
             int i;
             for (i = 0; i < in.keys.size(); i++) {
-              if (key.compareTo(in.keys.get(i)) < 0) {
-                break;
-              }
+                if (key.compareTo(in.keys.get(i)) < 0) {
+                    break;
+                }
             }
             temp_node = in.children.get(i);
-          }
-          assert (temp_node.isLeafNode);
-          if(temp_node.isLeafNode) {
+        }
+        assert (temp_node.isLeafNode);
+        if(temp_node.isLeafNode) {
             LeafNode<K, T> ln = (LeafNode<K,T>) temp_node;
             int i = 0;
             for (i = 0; i < ln.keys.size(); i++) {
-              if (key.compareTo(ln.keys.get(i)) < 0) {
-                break;
-              }
+                if (key.compareTo(ln.keys.get(i)) < 0) {
+                    break;
+                }
             }
             ln.keys.add(i, key);
             ln.values.add(i, value);
-          }
-          if (temp_node.isOverflowed()) {
+        }
+        if (temp_node.isOverflowed()) {
             int j = parents_node.size() - 1;
             Entry<K, Node<K,T>> temp_entry = splitLeafNode((LeafNode<K,T>)temp_node);
             if (j > -1) {
-              while (parents_node.get(j).keys.size() == 2 * D) {
                 int i;
                 for (i = 0; i < parents_node.get(j).keys.size(); i++) {
-                  if (temp_entry.getKey().compareTo(parents_node.get(j).keys.get(i)) < 0) {
-                    break;
-                  }
+                    if (temp_entry.getKey().compareTo(parents_node.get(j).keys.get(i)) < 0) {
+                        break;
+                    }
                 }
-                parents_node.get(j).children.add(i, temp_entry.getValue());
-                parents_node.get(j).keys.add(i,temp_entry.getKey());
-                temp_entry = splitIndexNode((parents_node.get(j)));
-                j = j - 1;
+                parents_node.get(j).insertSorted(temp_entry, i);
+                while (parents_node.get(j).isOverflowed()) {
+                    temp_entry = splitIndexNode((parents_node.get(j)));
+                    j = j - 1;
+                    if (j == -1) {
+                        break;
+                    }
+                    for (i = 0; i < parents_node.get(j).keys.size(); i++) {
+                        if (temp_entry.getKey().compareTo(parents_node.get(j).keys.get(i)) < 0) {
+                            break;
+                        }
+                    }
+                    parents_node.get(j).insertSorted(temp_entry, i);
+                }
                 if (j == -1) {
-                  break;
+                    root = new IndexNode<K,T>(temp_entry.getKey(), parents_node.get(0), temp_entry.getValue());
                 }
-              }
-              if (j == -1) {
-                root = new IndexNode<K,T>(temp_entry.getKey(), parents_node.get(0), temp_entry.getValue());
-              }
             } else {
-              if (j == -1) {
-                root = new IndexNode<K,T>(temp_entry.getKey(), ((LeafNode<K,T>)temp_entry.getValue()).previousLeaf, temp_entry.getValue());
-              }
+                if (j == -1) {
+                    root = new IndexNode<K,T>(temp_entry.getKey(), ((LeafNode<K,T>)temp_entry.getValue()).previousLeaf, temp_entry.getValue());
+                }
             }
-          }
-
         }
+        
+    }
 
 	/**
 	 * TODO Split a leaf node and return the new right node and the splitting
@@ -121,27 +126,28 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param leaf, any other relevant data
 	 * @return the key/node pair as an Entry
 	 */
-        public Entry<K, Node<K,T>> splitLeafNode(LeafNode<K,T> leaf) {
-          assert(leaf.keys.size() == 2 * D + 1);
-          List<T> temp_values = new ArrayList<T>(leaf.values);
-          List<K> temp_keys = new ArrayList<K>(leaf.keys);
-          for (int i = 0; i < BPlusTree.D; i++) {
+    public Entry<K, Node<K,T>> splitLeafNode(LeafNode<K,T> leaf) {
+        assert(leaf.keys.size() == 2 * D + 1);
+        List<T> temp_values = new ArrayList<T>(leaf.values);
+        List<K> temp_keys = new ArrayList<K>(leaf.keys);
+        for (int i = 0; i < BPlusTree.D; i++) {
             temp_values.remove(0);
             temp_keys.remove(0);
-          }
-          K splitkey = temp_keys.get(0);
-          for (int i = 0; i <= BPlusTree.D; i++) {
+        }
+        K splitkey = temp_keys.get(0);
+        for (int i = 0; i <= BPlusTree.D; i++) {
             leaf.values.remove(BPlusTree.D);
             leaf.keys.remove(BPlusTree.D);
-          }
-          LeafNode<K,T> new_ln = new LeafNode<K,T>((List<K>)temp_keys, (List<T>)temp_values);
-          new_ln.isLeafNode = true;
-          new_ln.nextLeaf = leaf.nextLeaf;
-          leaf.nextLeaf = new_ln;
-          new_ln.previousLeaf = leaf;
-          Entry<K, Node<K,T>> new_entry = new AbstractMap.SimpleEntry<K, Node<K,T>>((K)splitkey, new_ln);
-          return new_entry;
         }
+        LeafNode<K,T> new_ln = new LeafNode<K,T>((List<K>)temp_keys, (List<T>)temp_values);
+        new_ln.isLeafNode = true;
+        new_ln.nextLeaf = leaf.nextLeaf;
+        leaf.nextLeaf = new_ln;
+        new_ln.previousLeaf = leaf;
+        Entry<K, Node<K,T>> new_entry = new AbstractMap.SimpleEntry<K, Node<K,T>>((K)splitkey, new_ln);
+        return new_entry;
+    }
+
 
 	/**
 	 * TODO split an indexNode and return the new right node and the splitting
@@ -150,25 +156,30 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	 * @param index, any other relevant data
 	 * @return new key/node pair as an Entry
 	 */
-        public Entry<K, Node<K,T>> splitIndexNode(IndexNode<K,T> index) {
-          assert (index.keys.size() == 2 * D + 1);
-          List<K> temp_keys = new ArrayList<K>(index.keys);
-          List<Node<K,T>> temp_children = new ArrayList<Node<K,T>>(index.children);
-          for (int i = 0; i < BPlusTree.D; i++) {
+    public Entry<K, Node<K,T>> splitIndexNode(IndexNode<K,T> index) {
+        assert (index.keys.size() == 2 * D + 1);
+        List<K> temp_keys = new ArrayList<K>(index.keys);
+        List<Node<K,T>> temp_children = new ArrayList<Node<K,T>>(index.children);
+        for (int i = 0; i < BPlusTree.D; i++) {
             temp_keys.remove(0);
             temp_children.remove(0);
-          }
-          K splitkey = (K)temp_keys.get(0);
-          temp_keys.remove(0);
-          for (int i = D; i < index.keys.size(); i++) {
+        }
+        K splitkey = (K)temp_keys.get(0);
+        temp_keys.remove(0);
+        temp_children.remove(0);
+        int size = index.keys.size();
+        for (int i = D; i < size; i++) {
             index.keys.remove(D);
             index.children.remove(D + 1);
-          }
-          IndexNode<K, T> in = new IndexNode<K, T> (temp_keys, temp_children);
-          in.isLeafNode = false;
-          Entry<K, Node<K,T>> temp_entry = new AbstractMap.SimpleEntry<K, Node<K, T>>(splitkey, in);
-          return temp_entry;
         }
+        assert (temp_keys.size() + 1 == temp_children.size());
+        assert (index.keys.size() + 1 == index.children.size());
+        IndexNode<K, T> in = new IndexNode<K, T> (temp_keys, temp_children);
+        in.isLeafNode = false;
+        Entry<K, Node<K,T>> temp_entry = new AbstractMap.SimpleEntry<K, Node<K, T>>(splitkey, in);
+        return temp_entry;
+    }
+
 
 	/**
 	 * TODO Delete a key/value pair from this B+Tree
