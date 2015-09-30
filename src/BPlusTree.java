@@ -295,9 +295,11 @@ public class BPlusTree<K extends Comparable<K>, T> {
 		
 		int parentIndex = -1;
 		
-		if(parent != null){// TODO Change to parentindex
-			parentIndex = parent.children.indexOf(leftIndex);
-		}
+//		if(parent != null){// TODO Change to parentindex
+//			parentIndex = parent.children.indexOf(leftIndex);
+//		}
+		
+		parentIndex = parent.children.indexOf(leftIndex);
 		
 		// Merge operation
 		if(leftIndex.keys.size() + rightIndex.keys.size() < 2 * D){
