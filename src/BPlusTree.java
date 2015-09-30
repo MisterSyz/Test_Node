@@ -209,11 +209,11 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			}
 			// Handle leafNode underflow case
 			if(indexNode.isUnderflowed() && parent != null){
-				int splitPos;
+				//int splitPos;
 				if(indexInParent > 0){
-					splitPos = handleIndexNodeUnderflow((IndexNode<K, T>)parent.children.get(indexInParent - 1), indexNode, parent);
+					handleIndexNodeUnderflow((IndexNode<K, T>)parent.children.get(indexInParent - 1), indexNode, parent);
 				}else{
-					splitPos = handleIndexNodeUnderflow(indexNode, (IndexNode<K, T>)parent.children.get(indexInParent + 1), parent);
+					handleIndexNodeUnderflow(indexNode, (IndexNode<K, T>)parent.children.get(indexInParent + 1), parent);
 				}
 			}else if(indexNode.isUnderflowed() && parent == null && indexNode.children.size() == 1){
 				root = indexNode.children.get(0);
@@ -229,16 +229,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
 				}
 			}
 			// Handle leafNode underflow case;
-			if(leafNode.isUnderflowed()){
-				int splitPos = -1;
+			if(leafNode.isUnderflowed() && parent != null){
+				//int splitPos = -1;
 				if(indexInParent > 0){
-					splitPos = handleLeafNodeUnderflow(leafNode.previousLeaf, leafNode, parent);
+					handleLeafNodeUnderflow(leafNode.previousLeaf, leafNode, parent);
 				}else{
-					splitPos = handleLeafNodeUnderflow(leafNode,leafNode.nextLeaf, parent);
+					handleLeafNodeUnderflow(leafNode,leafNode.nextLeaf, parent);
 				}
-				if(splitPos != -1){
-					
-				}
+//				if(splitPos != -1){
+//					
+//				}
 			}
 		}
 	}
@@ -264,11 +264,14 @@ public class BPlusTree<K extends Comparable<K>, T> {
 			parent.children.remove(right);
 			parent.keys.remove(parent.children.indexOf(left));
 			return parent.children.indexOf(left);
-		}else{
+		}else{// redistribution
 			if(left.isUnderflowed()){
 				left.insertSorted(right.keys.remove(0), right.values.remove(0));
 			}else{
-				right.insertSorted(left.keys.remove(left.keys.size() - 1), left.values.remove(left.values.size() - 1));
+				// Iteratively move the left node's children until there is n entries in the left and n + 1 in the right
+				while(left.keys.size() > D){
+					right.insertSorted(left.keys.remove(left.keys.size() - 1), left.values.remove(left.values.size() - 1));
+				}
 				parent.keys.set(parent.children.indexOf(left), right.keys.get(0));
 			}
 		}
@@ -290,30 +293,32 @@ public class BPlusTree<K extends Comparable<K>, T> {
 	public int handleIndexNodeUnderflow(IndexNode<K,T> leftIndex,
 			IndexNode<K,T> rightIndex, IndexNode<K,T> parent) {
 		
-		int indexInParent = -1;
+		int parentIndex = -1;
 		
-		if(parent != null){
-			indexInParent = parent.children.indexOf(leftIndex);
+		if(parent != null){// TODO Change to parentindex
+			parentIndex = parent.children.indexOf(leftIndex);
 		}
 		
 		// Merge operation
 		if(leftIndex.keys.size() + rightIndex.keys.size() < 2 * D){
-			leftIndex.keys.add(parent.keys.get(indexInParent));
+			leftIndex.keys.add(parent.keys.get(parentIndex));
 			leftIndex.keys.addAll(rightIndex.keys);
 			leftIndex.children.addAll(rightIndex.children);
 			parent.children.remove(rightIndex);
-			return indexInParent;
+			return parentIndex;
 		}else{
 			// Redistribute
 			if(leftIndex.isUnderflowed()){
-				leftIndex.keys.add(parent.keys.get(indexInParent));
-				parent.keys.set(indexInParent, rightIndex.keys.remove(0));
+				leftIndex.keys.add(parent.keys.get(parentIndex));
+				parent.keys.set(parentIndex, rightIndex.keys.remove(0));
 				leftIndex.children.add(rightIndex.children.remove(0));
 			}else{
-				rightIndex.keys.add(0, parent.keys.get(indexInParent));
-				Node<K, T> temp = leftIndex.children.remove(leftIndex.children.size() - 1);
-				rightIndex.children.add(temp);
-				parent.keys.set(parent.keys.size() - 1, leftIndex.keys.remove(leftIndex.keys.size() - 1));
+				// Iteratively move the left node's children until there is n entries in the left and n + 1 in the right
+				while(leftIndex.keys.size() > D){
+					rightIndex.keys.add(0, parent.keys.get(parentIndex));
+					rightIndex.children.add(0, leftIndex.children.remove(leftIndex.children.size() - 1));
+					parent.keys.set(parent.keys.size() - 1, leftIndex.keys.remove(leftIndex.keys.size() - 1));	
+				}
 			}
 		}
 		 
