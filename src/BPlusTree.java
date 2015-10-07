@@ -1,3 +1,7 @@
+/**
+ * Author: Yuzhuo Sun, Bangrui Chen, Jingyao Ren
+ */
+
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Map.Entry;
@@ -15,7 +19,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
     public static final int D = 2;
     
     /**
-     * TODO Search the value for a specific key
+     * Search the value for a specific key
      *
      * @param key
      * @return value
@@ -23,8 +27,16 @@ public class BPlusTree<K extends Comparable<K>, T> {
     public T search(K key) {
         return searchNode(root, key);
     }
-    public T searchNode(Node<K,T> tempRoot, K key) {
-        if (tempRoot.isLeafNode) {
+    
+    /**
+     * Overwritten search for a specific key
+     *
+     * @param current temp root
+     * @param key
+     * @return value
+     */
+    private T searchNode(Node<K,T> tempRoot, K key) {
+        if (tempRoot.isLeafNode) { // Search in leaf nodes
             int i = 0;
             LeafNode<K, T> ln = (LeafNode<K, T>) tempRoot;
             for (i = 0; i < ln.keys.size(); i++ ) {
@@ -33,7 +45,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
                 }
             }
             return null;
-        } else {
+        } else { // Search in index nodes
             int i = 0;
             IndexNode<K, T> in = (IndexNode<K, T>)tempRoot;
             for (i = 0; i < in.keys.size(); i++) {
@@ -47,7 +59,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
     
     
     /**
-     * TODO Insert a key/value pair into the BPlusTree
+     *  Insert a key/value pair into the BPlusTree
      *
      * @param key
      * @param value
@@ -60,7 +72,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
         }
         Node<K,T> tempNode = root;
         ArrayList<IndexNode<K,T>> parentsNode = new ArrayList<IndexNode<K,T>>();
-        while(!tempNode.isLeafNode) {
+        while(!tempNode.isLeafNode) { // Traverse until encounter a leaf node
             parentsNode.add((IndexNode<K,T>)tempNode);
             IndexNode<K,T> in = (IndexNode<K,T>) tempNode;
             int i;
@@ -72,7 +84,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
             tempNode = in.children.get(i);
         }
         assert (tempNode.isLeafNode);
-        if(tempNode.isLeafNode) {
+        if(tempNode.isLeafNode) { // Traverse in the targeted leaf node to insert new node
             LeafNode<K, T> ln = (LeafNode<K,T>) tempNode;
             int i = 0;
             for (i = 0; i < ln.keys.size(); i++) {
@@ -83,7 +95,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
             ln.keys.add(i, key);
             ln.values.add(i, value);
         }
-        if (tempNode.isOverflowed()) {
+        if (tempNode.isOverflowed()) { // Check overflow and handle overflow condition
             int j = parentsNode.size() - 1;
             Entry<K, Node<K,T>> tempEntry = splitLeafNode((LeafNode<K,T>)tempNode);
             if (j > -1) {
@@ -120,7 +132,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
     }
     
     /**
-     * TODO Split a leaf node and return the new right node and the splitting
+     * Split a leaf node and return the new right node and the splitting
      * key as an Entry<slitingKey, RightNode>
      *
      * @param leaf, any other relevant data
@@ -181,7 +193,7 @@ public class BPlusTree<K extends Comparable<K>, T> {
     }
 
     /**
-     * TODO Delete a key/value pair from this B+Tree
+     * Delete a key/value pair from this B+Tree
      *
      * @param key
      */
@@ -189,6 +201,14 @@ public class BPlusTree<K extends Comparable<K>, T> {
         delete(null, root, key, -1);
     }
     
+    /**
+     * Overwritten method delete a key/value pair from this B+Tree
+     *
+     * @param parent node
+     * @param current traversing node 
+     * @param key
+     * @param current node's index in parent
+     */
     private void delete(IndexNode <K, T> parent, Node<K, T> current, K key, int indexInParent){
         // LeafNode case
         if(!current.isLeafNode){
@@ -202,9 +222,6 @@ public class BPlusTree<K extends Comparable<K>, T> {
                     delete(indexNode, indexNode.children.get(indexNode.children.size() - 1), key, i + 1);
                     break;
                 }
-                //				else if(indexNode.keys.get(i - 1).compareTo(key) < 0 && indexNode.keys.get(i).compareTo(key) > 0){
-                //					delete(indexNode, indexNode.children.get(i), key, i);
-                //				}
             }
             // Handle leafNode underflow case
             if(indexNode.isUnderflowed() && parent != null){
@@ -235,15 +252,12 @@ public class BPlusTree<K extends Comparable<K>, T> {
                 }else{
                     handleLeafNodeUnderflow(leafNode,leafNode.nextLeaf, parent);
                 }
-                //				if(splitPos != -1){
-                //
-                //				}
             }
         }
     }
     
     /**
-     * TODO Handle LeafNode Underflow (merge or redistribution)
+     * Handle LeafNode Underflow (merge or redistribution)
      *
      * @param left
      *            : the smaller node
